@@ -1,6 +1,7 @@
 import sys
 import pygame
 import random
+import math
 from time import sleep
 
 board_size = width, height = int(input("Enter desired width: \n")), int(input("Enter desired height: \n"))
@@ -11,6 +12,11 @@ print("Starting game...")
 dead = 0, 0, 0
 alive = 0, 255, 0
 max_fps = 8
+class Circle:
+    def __init__(self, row, col, circle):
+        self.row = row
+        self.col = col
+        self.circle = circle
 class Game:
     def __init__(self):
         pygame.init()
@@ -21,6 +27,7 @@ class Game:
         self.paused = True
         self.game_over = False
         self.glider = []
+        self.circles = []
     
     def init_grids(self):
         self.num_cols = int(width / cell_size)
@@ -50,15 +57,16 @@ class Game:
         for row in range(self.num_rows):
             for col in range(self.num_cols):
                 state = self.active_grid[row][col]
+                neighbors = self.count_buddies(self.active_grid, row, col)
                 if state == 0:
-                    if self.count_buddies(self.active_grid, row, col) == 3: # reproduction
+                    if neighbors == 3: # reproduction
                         self.next_grid[row][col] = 1 # born
                     else:
                         self.next_grid[row][col] = 0 # stays dead
-                if state == 1:
-                    if self.count_buddies(self.active_grid, row, col) < 2:
+                else:
+                    if neighbors < 2:
                         self.next_grid[row][col] = 0 # dies
-                    if self.count_buddies(self.active_grid, row, col) > 3: # underpopulation or overpopulation 
+                    if neighbors > 3: # underpopulation or overpopulation 
                         self.next_grid[row][col] = 0 # dies
                     else:
                         self.next_grid[row][col] = state # lives
@@ -70,16 +78,7 @@ class Game:
             for row in range(self.num_rows):
                 cell_state = alive if self.active_grid[row][col] == 1 else dead
                 circle = pygame.draw.circle(self.screen, cell_state, (int(col * cell_size + cell_size/2), int(row * cell_size + cell_size/2)), int(cell_size/2), 0)
-                if self.paused:
-                    self.next_grid = self.active_grid
-                    if circle.collidepoint(pygame.mouse.get_pos()) and pygame.mouse.get_pressed()[0]:
-                        if self.active_grid[row][col] == 1:
-                            self.next_grid[row][col] = 0
-                            print("Alive")
-                        else: 
-                            self.next_grid[row][col] = 1
-                            print("Dead")
-                        self.active_grid = self.next_grid
+        self.active_grid = self.next_grid
             
         pygame.display.flip()
     def set_grid(self, grid, value=None):
@@ -89,12 +88,26 @@ class Game:
                     grid[row][col] = random.randint(0, 1)
                 else:
                     grid[row][col] = value
-                        
+    def toggle_cell(self, row, col):
+        state = self.active_grid[row][col]
+        if state == 1:
+            self.active_grid[row][col] = 0
+        else:
+            self.active_grid[row][col] = 1 
+    def get_cell_row_col_from_mouse_x_y(self, mouse_x, mouse_y):
+        row = int(math.floor(mouse_y / cell_size))
+        col = int(math.floor(mouse_x / cell_size))  
+        return (row, col)              
     def handle_events(self):
         for event in pygame.event.get():
                 # if event is keypress of p, pause algo, toggle pause
                 # if event is keypress of r, randomize grid
                 # if event is keypress of q, quit
+                if self.paused:
+                    if event.type == pygame.MOUSEBUTTONUP:
+                        row = self.get_cell_row_col_from_mouse_x_y(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])[0]
+                        col = self.get_cell_row_col_from_mouse_x_y(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])[1]
+                        self.toggle_cell(row, col)      
                 if event.type == pygame.KEYDOWN:
                     if event.unicode == "p":
                         if self.paused:
