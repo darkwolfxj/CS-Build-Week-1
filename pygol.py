@@ -154,7 +154,6 @@ To quit the game, press Q \n """)
                 if event.type == pygame.QUIT: sys.exit()
     
     def run(self):
-        self.set_grid(self.active_grid)
         while True:
             if self.game_over:
                 return
