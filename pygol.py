@@ -4,19 +4,15 @@ import random
 import math
 from time import sleep
 
-board_size = width, height = int(input("Enter desired width: \n")), int(input("Enter desired height: \n"))
 cell_size = int(input("Enter desired cell size (in px): \n"))
+board_size = width, height = int(input("Enter desired width: \n")), int(input("Enter desired height: \n"))
 print("It is advised that you keep the terminal in sight while you run pygol. From within the Game, press Enter to access the menu, press C to clear the grid, P to play/pause, R to randomize the grid and Q to quit. You can also click in the game to draw.")
 sleep(3)
 print("Starting game...")
 dead = 0, 0, 0
 alive = 0, 255, 0
 max_fps = 8
-class Circle:
-    def __init__(self, row, col, circle):
-        self.row = row
-        self.col = col
-        self.circle = circle
+
 class Game:
     def __init__(self):
         pygame.init()
@@ -26,9 +22,26 @@ class Game:
         self.init_grids()
         self.paused = True
         self.game_over = False
-        self.glider = []
-        self.circles = []
-    
+        self.glider = [
+            [1, 1, 1],
+            [0, 0, 1],
+            [0, 1, 0]
+        ]
+        self.pulsar = []
+    def insert_glider(self):
+        # append appropriate number of 0s to both cols and rows of glider 2D Array
+        # set new 2D array to active grid
+        glider_rows = len(self.glider) # rows to add to glider rows
+        glider_cols = len(self.glider[0]) # zeroes to add to glider columns
+        rowsToAdd = self.num_rows - glider_rows
+        OsToAddToCols = self.num_cols - glider_cols
+        for i in self.glider:
+            for zero in range(OsToAddToCols):
+                i.append(0)
+        for row in range(rowsToAdd):
+            self.glider.append(([0] * OsToAddToCols) + ([0] * glider_cols))
+        self.active_grid = self.glider
+        self.draw_grid()
     def init_grids(self):
         self.num_cols = int(width / cell_size)
         self.num_rows = int(height / cell_size)
@@ -42,36 +55,22 @@ class Game:
     def clear_screen(self):
         self.screen.fill(dead)
 
-    # def count_buddies(self, grid, current_row, current_column):
-    #     total = 0
-    #     for i in range(-1, 2):
-    #         for j in range(-1, 2):
-    #             row = (current_row + i + self.num_rows) % self.num_rows
-    #             col = (current_column + j + self.num_cols) % self.num_cols
-    #             total += grid[row][col]
-    #     total -= grid[current_row][current_column]
-    #     return total
-    def neighbors(self, grid, r, c):
-        def get(r, c):
-            if 0 <= r < len(grid) and 0 <= c < len(grid[r]):
-                return grid[r][c]
-            else:
-                return 0
-
-        neighbors_list = [get(r-1, c-1), get(r-1, c), get(r-1, c+1),
-                          get(r  , c-1),              get(r  , c+1),
-                          get(r+1, c-1), get(r+1, c), get(r+1, c+1)]
-
-        return sum(map(bool, neighbors_list))
+    def count_buddies(self, grid, current_row, current_column):
+        total = 0
+        for i in range(-1, 2):
+            for j in range(-1, 2):
+                row = (current_row + i + self.num_rows) % self.num_rows
+                col = (current_column + j + self.num_cols) % self.num_cols
+                total += grid[row][col]
+        total -= grid[current_row][current_column]
+        return total
+        
     def update_generation(self):
         # run algo, appply to next_grid, swap next_grid and active_grid
-        # self.set_grid(self.active_grid)
         for row in range(self.num_rows):
             for col in range(self.num_cols):
                 state = self.active_grid[row][col]
-                self.next_grid = self.active_grid
-                neighbors = self.neighbors(self.active_grid, row, col)
-                print("Neigbors at current_row, current_column: ", row, "/", col, neighbors)
+                neighbors = self.count_buddies(self.active_grid, row, col)
                 if state == 1:
                     if neighbors == 2:
                         self.next_grid[row][col] = state
@@ -84,8 +83,11 @@ class Game:
                         self.next_grid[row][col] = 1
                     else:
                         self.next_grid[row][col] = state        
-                    
         self.active_grid = self.next_grid
+        self.draw_grid()
+        self.next_grid = []
+        for row in range(self.num_rows):
+            self.next_grid.append([0] * (self.num_cols))
         # self.set_grid(self.active_grid)
     
     def draw_grid(self):
@@ -117,12 +119,6 @@ class Game:
                 # if event is keypress of p, pause algo, toggle pause
                 # if event is keypress of r, randomize grid
                 # if event is keypress of q, quit
-                if self.paused:
-                    if event.type == pygame.MOUSEBUTTONUP:
-                        row = self.get_cell_row_col_from_mouse_x_y(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])[0]
-                        col = self.get_cell_row_col_from_mouse_x_y(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])[1]
-                        self.toggle_cell(row, col)  
-                        self.draw_grid()    
                 if event.type == pygame.KEYDOWN:
                     if event.unicode == "p":
                         if self.paused:
@@ -131,40 +127,70 @@ class Game:
                         else:
                             print("Pausing...")
                             self.paused = True
-                    elif event.unicode == "r":
+                            
+                
+                if event.type == pygame.MOUSEBUTTONUP and self.paused:
+                    row = self.get_cell_row_col_from_mouse_x_y(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])[0]
+                    col = self.get_cell_row_col_from_mouse_x_y(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])[1]
+                    self.toggle_cell(row, col)  
+                    self.draw_grid()    
+                
+                if event.type == pygame.KEYDOWN and self.paused:            
+                    if event.unicode == "r":
                         print("Randomizing grid...")
                         self.set_grid(self.active_grid)
                         self.draw_grid()
                         continue
-                    elif event.unicode == "q":
-                        print("Exiting...")
-                        self.game_over = True
+                    
                     elif event.unicode == "c":
                         self.set_grid(self.active_grid, 0)
                         self.draw_grid()
                         continue 
+                    
                     elif event.unicode == "\r":
-                        print("Accessinng menu...")
+                        print("Accessing menu...")
                         option = input("""Options: 
-To access presets, enter 1 into the terminal
+To access presets, enter 1 into the terminal,
+To change resolution or cell size, enter 2 in the terminal
 To exit this menu, press Enter in the terminal
 To quit the game, press Q \n """)
                         if option == None:
                             continue
                         if option == "1":
                             print("Presets")
-                            preset = input("Enter a preset into the terminal from the following list (or press Enter to exit this menu): ")
+                            preset = input("""Enter a preset into the terminal from the following list (or press Enter to exit this menu): 
+                            glider
+                            beacon
+                            blinker
+                            pulsar \n""")
                             if preset == None:
                                 continue
                             elif preset == "glider":
-                                self.active_grid = self.glider
+                                self.insert_glider()
                             elif preset == "beacon":
-                                self.active_grid = self.beacon
+                                pass
                             elif preset == "blinker":
-                                self.active_grid = self.blinker
+                                pass
                             elif preset == "pulsar":
-                                self.active_grid = self.pulsar
-
+                                pass
+                        if option == "2":
+                            option = input("Do you want to change resolution and cell size (1), or go back (Enter)?")    
+                            if option == None:
+                                continue
+                            elif option == "1":
+                                global cell_size
+                                cell_size = int(input("Enter desired cell size: "))
+                                global board_size, width, height
+                                board_size = width, height = int(input("Enter desired width (in px): ")), int(input("Enter desired height (in px): "))
+                                self.num_cols = int(width / cell_size)
+                                self.num_rows = int(height / cell_size)
+                                self.init_grids()
+                                self.screen = pygame.display.set_mode(board_size)
+                                continue
+                if event.type == pygame.KEYDOWN:
+                    if event.unicode == "q":
+                        print("Exiting...")
+                        self.game_over = True
                         
                 if event.type == pygame.QUIT: sys.exit()
     
