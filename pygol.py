@@ -42,34 +42,49 @@ class Game:
     def clear_screen(self):
         self.screen.fill(dead)
 
-    def count_buddies(self, grid, x, y):
-        total = 0
-        for i in [-1, 0, 1]:
-            for j in [-1, 0, 1]:
-                row = (x + i + self.num_rows) % self.num_rows
-                col = (y + j + self.num_cols) % self.num_cols
-                total += grid[row][col]
-        total -= grid[x][y]
-        return total
+    # def count_buddies(self, grid, current_row, current_column):
+    #     total = 0
+    #     for i in range(-1, 2):
+    #         for j in range(-1, 2):
+    #             row = (current_row + i + self.num_rows) % self.num_rows
+    #             col = (current_column + j + self.num_cols) % self.num_cols
+    #             total += grid[row][col]
+    #     total -= grid[current_row][current_column]
+    #     return total
+    def neighbors(self, grid, r, c):
+        def get(r, c):
+            if 0 <= r < len(grid) and 0 <= c < len(grid[r]):
+                return grid[r][c]
+            else:
+                return 0
+
+        neighbors_list = [get(r-1, c-1), get(r-1, c), get(r-1, c+1),
+                          get(r  , c-1),              get(r  , c+1),
+                          get(r+1, c-1), get(r+1, c), get(r+1, c+1)]
+
+        return sum(map(bool, neighbors_list))
     def update_generation(self):
         # run algo, appply to next_grid, swap next_grid and active_grid
         # self.set_grid(self.active_grid)
         for row in range(self.num_rows):
             for col in range(self.num_cols):
                 state = self.active_grid[row][col]
-                neighbors = self.count_buddies(self.active_grid, row, col)
-                if state == 0:
-                    if neighbors == 3: # reproduction
-                        self.next_grid[row][col] = 1 # born
+                self.next_grid = self.active_grid
+                neighbors = self.neighbors(self.active_grid, row, col)
+                print("Neigbors at current_row, current_column: ", row, "/", col, neighbors)
+                if state == 1:
+                    if neighbors == 2:
+                        self.next_grid[row][col] = state
+                    elif neighbors == 3:
+                        self.next_grid[row][col] = state
                     else:
-                        self.next_grid[row][col] = 0 # stays dead
+                        self.next_grid[row][col] = 0
                 else:
-                    if neighbors < 2:
-                        self.next_grid[row][col] = 0 # dies
-                    if neighbors > 3: # underpopulation or overpopulation 
-                        self.next_grid[row][col] = 0 # dies
+                    if neighbors == 3:
+                        self.next_grid[row][col] = 1
                     else:
-                        self.next_grid[row][col] = state # lives
+                        self.next_grid[row][col] = state        
+                    
         self.active_grid = self.next_grid
         # self.set_grid(self.active_grid)
     
@@ -78,7 +93,6 @@ class Game:
             for row in range(self.num_rows):
                 cell_state = alive if self.active_grid[row][col] == 1 else dead
                 circle = pygame.draw.circle(self.screen, cell_state, (int(col * cell_size + cell_size/2), int(row * cell_size + cell_size/2)), int(cell_size/2), 0)
-        self.active_grid = self.next_grid
             
         pygame.display.flip()
     def set_grid(self, grid, value=None):
@@ -107,7 +121,8 @@ class Game:
                     if event.type == pygame.MOUSEBUTTONUP:
                         row = self.get_cell_row_col_from_mouse_x_y(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])[0]
                         col = self.get_cell_row_col_from_mouse_x_y(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[1])[1]
-                        self.toggle_cell(row, col)      
+                        self.toggle_cell(row, col)  
+                        self.draw_grid()    
                 if event.type == pygame.KEYDOWN:
                     if event.unicode == "p":
                         if self.paused:
@@ -160,8 +175,8 @@ To quit the game, press Q \n """)
             self.handle_events()
             if not self.paused:
                 self.update_generation()
-            self.draw_grid() 
-            self.cap_framerate()
+                self.draw_grid() 
+                self.cap_framerate()
     
     def cap_framerate(self):
         now = pygame.time.get_ticks()
