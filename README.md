@@ -23,4 +23,4 @@
     
 ![PyGame Logo](http://www.pygame.org/docs/pygame_logo.gif)
   
-![Game of Life Gif](https://i.imgur.com/agsGxYS.gifv)
+![Game of Life Gif](https://i.imgur.com/agsGxYS.gif)
